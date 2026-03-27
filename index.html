@@ -4,17 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>賭けボトルフリップ</title>
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
         body {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            background-color: #2c3e50;
+            font-family: 'DotGothic16', sans-serif;
+            background-color: #000;
             color: white;
             display: flex;
             flex-direction: column;
             height: 100vh;
             overflow: hidden;
             transition: background-color 0.5s;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+        .crt::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 200;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
         }
         header {
             background: rgba(0, 0, 0, 0.7);
@@ -30,7 +43,6 @@
         .text-red { color: #ff4757; }
         .text-green { color: #2ed573; }
         .text-gold { color: #f1c40f; }
-        
         #env-display {
             text-align: center;
             padding: 10px;
@@ -40,7 +52,6 @@
             text-shadow: 1px 1px 2px black;
             z-index: 10;
         }
-
         #game-area {
             flex-grow: 1;
             display: flex;
@@ -49,18 +60,15 @@
             align-items: center;
             position: relative;
         }
-
         #gauge-container {
             width: 80%;
             height: 30px;
             background: #333;
-            border: 2px solid #fff;
-            border-radius: 15px;
+            border: 4px solid #fff;
             position: relative;
             margin-bottom: 40px;
             overflow: hidden;
         }
-       
         #target-zone {
             height: 100%;
             background: rgba(46, 213, 115, 0.6);
@@ -70,7 +78,6 @@
             width: 30%;
             transition: width 0.3s;
         }
-       
         #cursor {
             width: 10px;
             height: 100%;
@@ -80,28 +87,24 @@
             left: 0;
             box-shadow: 0 0 10px #ff4757;
         }
-
         #bottle {
             font-size: 80px;
             transition: transform 0.1s;
             position: relative;
             z-index: 10;
         }
-       
         .flip-anim { animation: flip 1s ease-in-out forwards; }
         @keyframes flip {
             0% { transform: translateY(0) rotate(0deg); }
             50% { transform: translateY(-150px) rotate(180deg); }
             100% { transform: translateY(0) rotate(360deg); }
         }
-        
         .shoot-anim { animation: shoot 0.5s ease-in forwards; }
         @keyframes shoot {
             0% { transform: scale(1) rotate(0deg); }
             50% { transform: scale(3) rotate(90deg) translateX(50px); filter: brightness(2) drop-shadow(0 0 20px red); }
             100% { transform: scale(10) rotate(90deg) translateX(100px); opacity: 0; }
         }
-
         #swipe-area {
             width: 100%;
             height: 25vh;
@@ -115,7 +118,6 @@
             touch-action: none;
             z-index: 10;
         }
-
         #controls {
             display: flex;
             justify-content: space-around;
@@ -127,16 +129,13 @@
             padding: 10px 20px;
             font-size: 16px;
             font-weight: bold;
-            border: none;
-            border-radius: 5px;
+            border: 4px solid #fff;
             cursor: pointer;
+            font-family: 'DotGothic16', sans-serif;
         }
         #btn-borrow { background: #ffaa00; color: #000; }
-       
         #btn-next { background: #2ed573; color: #fff; }
-       
         button:disabled { background: #555; color: #888; cursor: not-allowed; }
-
         .overlay-screen {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -151,17 +150,14 @@
             transition: opacity 0.3s;
         }
         .overlay-screen.active { opacity: 1; pointer-events: auto; }
-        
+        .overlay-screen {
+            border: 8px double #fff;
+        }
         #result-overlay h1 { font-size: 32px; margin-bottom: 20px; text-align: center; }
-       
         #result-overlay p { font-size: 18px; margin-bottom: 30px; text-align: center; line-height: 1.5; }
-       
         #btn-restart { background: #fff; color: #000; padding: 15px 30px; font-size: 18px; }
-
         #shop-overlay h1 { font-size: 28px; color: #9b59b6; margin-bottom: 10px; text-shadow: 0 0 10px #9b59b6; }
-       
         #shop-overlay p { margin-bottom: 20px; color: #ccc; }
-       
         .buff-cards {
             display: flex;
             flex-direction: column;
@@ -169,36 +165,26 @@
             width: 80%;
             max-width: 300px;
         }
-       
         .buff-card {
             background: #2c3e50;
-            border: 2px solid #555;
-            border-radius: 8px;
+            border: 4px solid #fff;
             padding: 15px;
             text-align: center;
             cursor: pointer;
             transition: transform 0.1s, border-color 0.2s;
         }
-       
         .buff-card:active { transform: scale(0.95); }
-       
         .buff-card h3 { font-size: 18px; margin-bottom: 5px; color: #f1c40f; }
-       
         .buff-card p { font-size: 14px; color: #fff; margin: 0; }
-       
-        
         #flash {
             position: absolute; top:0; left:0; width:100%; height:100%;
             background: red; z-index: 50; opacity: 0; pointer-events: none;
         }
-       
         .flash-anim { animation: flashRed 0.5s ease-out; }
-       
         @keyframes flashRed { 0% { opacity: 0.8; } 100% { opacity: 0; } }
     </style>
 </head>
-<body>
-
+<body class="crt">
     <header>
         <div class="stats-col">
             <div>所持金: <span id="money" class="text-green">¥10,000</span></div>
@@ -209,9 +195,7 @@
             <div>没収額: <span id="penalty" class="text-red">¥5,000</span></div>
         </div>
     </header>
-
     <div id="env-display">【環境】静かな路地裏</div>
-
     <div id="game-area">
         <div id="flash"></div>
         <div id="gauge-container">
@@ -220,53 +204,59 @@
         </div>
         <div id="bottle">🍾</div>
     </div>
-
     <div id="swipe-area">👆 上にスワイプしてフリップ</div>
-
     <div id="controls">
         <button id="btn-borrow">借入 (¥1万)</button>
+        <button id="btn-gacha">ガチャ (¥3,000)</button>
+        <button id="btn-collection">図鑑</button>
         <button id="btn-next" disabled>闇市へ進む</button>
     </div>
-
     <div id="result-overlay" class="overlay-screen">
         <h1 id="overlay-title">結果</h1>
         <p id="overlay-msg">メッセージ</p>
         <button id="btn-restart" style="display:none;">輪廻転生 (リスタート)</button>
     </div>
-
     <div id="shop-overlay" class="overlay-screen">
         <h1>◆ 闇市 ◆</h1>
         <p>生き残るための取引をしよう。</p>
         <div class="buff-cards" id="buff-cards-container">
             </div>
+        <button onclick="document.getElementById('shop-overlay').classList.remove('active'); startGauge();" style="margin-top:20px;">閉じる</button>
     </div>
-
+    <div id="gacha-overlay" class="overlay-screen">
+        <h1 id="gacha-title">ガチャ</h1>
+        <div id="gacha-result-bottle" style="font-size: 100px; margin: 20px;">?</div>
+        <p id="gacha-msg"></p>
+        <button onclick="document.getElementById('gacha-overlay').classList.remove('active'); startGauge();">閉じる</button>
+    </div>
+    <div id="collection-overlay" class="overlay-screen">
+        <h1>◆ 図鑑 ◆</h1>
+        <div id="collection-list" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 20px; overflow-y: auto; max-height: 50vh;"></div>
+        <button onclick="document.getElementById('collection-overlay').classList.remove('active'); startGauge();">閉じる</button>
+    </div>
 <script>
-    // --- ゲーム状態 ---
     let state = {
         money: 10000,
         debt: 0,
         stage: 1,
         isFlipping: false,
+        unlockedBottles: ['🍾'],
+        currentBottle: '🍾',
         gaugePos: 0,
         gaugeDir: 1,
         animFrame: null,
         gameOver: false,
-        // ベースの環境値
         baseTargetWidth: 30,
         baseSpeed: 1.2,
         basePenalty: 5000,
         baseReward: 8000,
-        // バフ（プレイヤーに有利な補正）
         buffs: {
-            widthBonus: 0,      // 安全地帯の幅追加 (%)
-            speedMod: 1.0,      // 速度低下の倍率 (低いほど遅い)
-            rewardMod: 1.0,     // 報酬増加の倍率
-            penaltyMod: 1.0     // 没収額減少の倍率
+            widthBonus: 0,      
+            speedMod: 1.0,      
+            rewardMod: 1.0,     
+            penaltyMod: 1.0     
         }
     };
-
-    // --- ローグライク環境データ ---
     const environments = [
         { name: "静かな路地裏", bg: "#2c3e50", speed: 1.2, width: 35, penalty: 5000, reward: 8000 },
         { name: "地下の違法バー", bg: "#4a2311", speed: 1.8, width: 28, penalty: 12000, reward: 20000 },
@@ -274,8 +264,6 @@
         { name: "マフィアの拷問部屋", bg: "#330000", speed: 4.0, width: 16, penalty: 80000, reward: 150000 },
         { name: "狂気のVIPルーム", bg: "#1a0033", speed: 6.0, width: 10, penalty: 200000, reward: 500000 }
     ];
-
-    // --- バフ（アップグレード）の種類 ---
     const buffPool = [
         { id: 'width', name: "動体視力強化", desc: "安全地帯の幅が少し広がる", apply: () => state.buffs.widthBonus += 4 },
         { id: 'slow', name: "精神統一", desc: "ゲージの移動速度が15%遅くなる", apply: () => state.buffs.speedMod *= 0.85 },
@@ -283,8 +271,6 @@
         { id: 'penalty', name: "裏工作", desc: "失敗時の没収額が20%ダウン", apply: () => state.buffs.penaltyMod *= 0.8 },
         { id: 'money', name: "闇の給付金", desc: "即座に ¥20,000 を獲得する", apply: () => { state.money += 20000; updateUI(); } }
     ];
-
-    // --- DOM要素 ---
     const elMoney = document.getElementById('money');
     const elDebt = document.getElementById('debt');
     const elStage = document.getElementById('stage');
@@ -296,7 +282,6 @@
     const elSwipeArea = document.getElementById('swipe-area');
     const btnBorrow = document.getElementById('btn-borrow');
     const btnNext = document.getElementById('btn-next');
-    
     const resultOverlay = document.getElementById('result-overlay');
     const shopOverlay = document.getElementById('shop-overlay');
     const overlayTitle = document.getElementById('overlay-title');
@@ -304,12 +289,13 @@
     const btnRestart = document.getElementById('btn-restart');
     const elFlash = document.getElementById('flash');
     const buffCardsContainer = document.getElementById('buff-cards-container');
-
-    // --- 初期化 ---
+    const bottleList = ['🍼', '🥤', '🧋', '🍺', '🍷', '🥃', '🍸', '🍹', '🍶', '🍾', '🏺', '🧪', '🧴', '🧂', '🍯'];
     function initGame() {
         state = {
             money: 10000, debt: 0, stage: 1, isFlipping: false, gaugePos: 0, gaugeDir: 1, animFrame: null, gameOver: false,
-            buffs: { widthBonus: 0, speedMod: 1.0, rewardMod: 1.0, penaltyMod: 1.0 }
+            buffs: { widthBonus: 0, speedMod: 1.0, rewardMod: 1.0, penaltyMod: 1.0 },
+            unlockedBottles: ['🍾'],
+            currentBottle: '🍾'
         };
         elBottle.classList.remove('shoot-anim');
         btnRestart.style.display = 'none';
@@ -319,27 +305,20 @@
         updateUI();
         startGauge();
     }
-
-    // --- UI更新 ---
     function updateUI() {
         elMoney.innerText = `¥${Math.floor(state.money).toLocaleString()}`;
         elDebt.innerText = `¥${Math.floor(state.debt).toLocaleString()}`;
         elStage.innerText = state.stage;
-        
-        // バフを加味した表示額の計算
+        elBottle.innerText = state.currentBottle;
         const currentEnv = getEnvData();
         const displayPenalty = Math.floor(currentEnv.penalty * state.buffs.penaltyMod);
         elPenalty.innerText = `¥${displayPenalty.toLocaleString()}`;
-        
         elTarget.style.left = `${state.targetLeft}%`;
         elTarget.style.width = `${state.targetWidth}%`;
     }
-
-    // --- 環境データの取得 ---
     function getEnvData() {
         const envIndex = Math.min(state.stage - 1, environments.length - 1);
         let env = { ...environments[envIndex] };
-        // 最終ステージ以降のインフレ
         if (state.stage > environments.length) {
             const diff = state.stage - environments.length;
             env.speed += diff * 1.0;
@@ -351,25 +330,16 @@
         }
         return env;
     }
-
-    // --- 環境の適用 (バフ計算含む) ---
     function applyEnvironment() {
         const env = getEnvData();
-        
-        // バフを適用して実数値を決定
         state.gaugeSpeed = Math.max(0.5, env.speed * state.buffs.speedMod);
-        state.targetWidth = Math.min(80, env.width + state.buffs.widthBonus); // 最大80%まで
+        state.targetWidth = Math.min(80, env.width + state.buffs.widthBonus); 
         state.penalty = Math.floor(env.penalty * state.buffs.penaltyMod);
         state.reward = Math.floor(env.reward * state.buffs.rewardMod);
-        
         document.body.style.backgroundColor = env.bg;
         elEnv.innerText = `【環境】${env.name}`;
-        
-        // ターゲット位置をランダム化
         state.targetLeft = Math.random() * (100 - state.targetWidth);
     }
-
-    // --- ゲージのアニメーション ---
     function startGauge() {
         if(state.animFrame) cancelAnimationFrame(state.animFrame);
         function loop() {
@@ -382,23 +352,18 @@
         }
         loop();
     }
-
-    // --- スワイプ判定処理 ---
     let startY = 0;
     function handleSwipeStart(y) { if (!state.isFlipping && !state.gameOver) startY = y; }
     function handleSwipeEnd(y) {
         if (state.isFlipping || state.gameOver) return;
         if (startY - y > 50) flipBottle();
     }
-
     elSwipeArea.addEventListener('touchstart', e => handleSwipeStart(e.touches[0].clientY));
     elSwipeArea.addEventListener('touchend', e => handleSwipeEnd(e.changedTouches[0].clientY));
     let isMouseDown = false;
     elSwipeArea.addEventListener('mousedown', e => { isMouseDown = true; handleSwipeStart(e.clientY); });
     elSwipeArea.addEventListener('mouseup', e => { if(isMouseDown) { handleSwipeEnd(e.clientY); isMouseDown = false; }});
     elSwipeArea.addEventListener('mouseleave', () => isMouseDown = false);
-
-    // --- ボトルフリップ処理 ---
     function flipBottle() {
         state.isFlipping = true;
         btnBorrow.disabled = true;
@@ -407,12 +372,9 @@
         elBottle.classList.add('flip-anim');
         setTimeout(() => { elBottle.classList.remove('flip-anim'); judgeResult(); }, 1000);
     }
-
-    // --- 判定と結果 ---
     function judgeResult() {
         const cursorCenter = state.gaugePos;
         if (cursorCenter >= state.targetLeft && cursorCenter <= state.targetLeft + state.targetWidth) {
-            // 成功
             state.money += state.reward;
             overlayTitle.innerText = "SUCCESS!";
             overlayTitle.style.color = "#2ed573";
@@ -420,11 +382,9 @@
             showResult(false);
             btnNext.disabled = false;
         } else {
-            // 失敗
             state.money -= state.penalty;
             overlayTitle.innerText = "FAILED...";
             overlayTitle.style.color = "#ff4757";
-            
             if (state.money <= 0) {
                 state.money = 0;
                 updateUI();
@@ -437,13 +397,11 @@
         }
         updateUI();
     }
-
     function triggerDeath() {
         state.gameOver = true;
         elFlash.classList.add('flash-anim');
         setTimeout(() => elFlash.classList.remove('flash-anim'), 500);
         elBottle.classList.add('shoot-anim');
-
         setTimeout(() => {
             overlayTitle.innerText = "YOU DIED";
             overlayTitle.style.color = "red";
@@ -451,7 +409,6 @@
             showResult(true);
         }, 600);
     }
-
     function showResult(isGameOver) {
         resultOverlay.classList.add('active');
         if (isGameOver) {
@@ -459,13 +416,10 @@
             btnNext.disabled = true;
             btnBorrow.disabled = true;
         } else {
-            // 少し待ってから結果表示を消す
             setTimeout(() => {
                 resultOverlay.classList.remove('active');
                 if(!btnNext.disabled) {
-                    // 成功時：そのまま待機（「闇市へ進む」ボタンを押させる）
                 } else {
-                    // 失敗時（生存）：自動でゲージ再開
                     state.isFlipping = false;
                     btnBorrow.disabled = false;
                     startGauge();
@@ -473,29 +427,22 @@
             }, 1500);
         }
     }
-
-    // --- 闇市（アップグレード）の処理 ---
     function openShop() {
         buffCardsContainer.innerHTML = '';
-        
-        // バフプールからランダムに3つ選ぶ
         let shuffled = [...buffPool].sort(() => 0.5 - Math.random());
         let choices = shuffled.slice(0, 3);
-
         choices.forEach(buff => {
             const card = document.createElement('div');
             card.className = 'buff-card';
             card.innerHTML = `<h3>${buff.name}</h3><p>${buff.desc}</p>`;
             card.addEventListener('click', () => {
-                buff.apply(); // バフの効果を発動
+                buff.apply(); 
                 closeShopAndNextStage();
             });
             buffCardsContainer.appendChild(card);
         });
-
         shopOverlay.classList.add('active');
     }
-
     function closeShopAndNextStage() {
         shopOverlay.classList.remove('active');
         state.stage++;
@@ -506,23 +453,57 @@
         updateUI();
         startGauge();
     }
-
-    // --- ボタン処理 ---
     btnBorrow.addEventListener('click', () => {
         state.money += 10000;
         state.debt += 10000;
         updateUI();
     });
-
     btnNext.addEventListener('click', () => {
-        openShop(); // 次のステージへ行く前に闇市を開く
+        openShop(); 
     });
-
     btnRestart.addEventListener('click', () => initGame());
-
-    // 起動
+    document.getElementById('btn-gacha').addEventListener('click', () => {
+        if (state.money >= 3000) {
+            state.money -= 3000;
+            const newBottle = bottleList[Math.floor(Math.random() * bottleList.length)];
+            if (!state.unlockedBottles.includes(newBottle)) {
+                state.unlockedBottles.push(newBottle);
+                document.getElementById('gacha-msg').innerText = `新種発見！ 「${newBottle}」を手に入れた！`;
+            } else {
+                document.getElementById('gacha-msg').innerText = `「${newBottle}」が当たった！（重複）`;
+            }
+            document.getElementById('gacha-result-bottle').innerText = newBottle;
+            document.getElementById('gacha-overlay').classList.add('active');
+            updateUI();
+        } else {
+            alert('資金不足だ。');
+        }
+    });
+    document.getElementById('btn-collection').addEventListener('click', () => {
+        const list = document.getElementById('collection-list');
+        list.innerHTML = '';
+        bottleList.forEach(b => {
+            const item = document.createElement('div');
+            item.style.fontSize = '40px';
+            item.style.padding = '10px';
+            item.style.cursor = 'pointer';
+            item.style.border = state.currentBottle === b ? '2px solid gold' : '2px solid transparent';
+            if (state.unlockedBottles.includes(b)) {
+                item.innerText = b;
+                item.onclick = () => {
+                    state.currentBottle = b;
+                    document.getElementById('collection-overlay').classList.remove('active');
+                    updateUI();
+                };
+            } else {
+                item.innerText = '？';
+                item.style.color = '#555';
+            }
+            list.appendChild(item);
+        });
+        document.getElementById('collection-overlay').classList.add('active');
+    });
     initGame();
-
 </script>
 </body>
 </html>
