@@ -142,8 +142,31 @@ if ('serviceWorker' in navigator) {
             font-family: 'DotGothic16', sans-serif;
         }
         #btn-borrow { background: #ffaa00; color: #000; }
+        #btn-repay { background: #3498db; color: #fff; }
         #btn-next { background: #2ed573; color: #fff; }
         button:disabled { background: #555; color: #888; cursor: not-allowed; }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]:focus { outline: none; }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 12px;
+            cursor: pointer;
+            background: #444;
+            border: 2px solid #fff;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            border: 2px solid #000;
+            height: 24px;
+            width: 12px;
+            background: #fff;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -8px;
+        }
         .overlay-screen {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -215,6 +238,7 @@ if ('serviceWorker' in navigator) {
     <div id="swipe-area">👆 上にスワイプしてフリップ</div>
     <div id="controls">
         <button id="btn-borrow">借入 (¥1万)</button>
+        <button id="btn-repay">返済</button>
         <button id="btn-gacha">ガチャ (¥3,000)</button>
         <button id="btn-collection">図鑑</button>
         <button id="btn-achievements">実績</button>
@@ -247,6 +271,15 @@ if ('serviceWorker' in navigator) {
         <h1>◆ 実績 ◆</h1>
         <div id="achievements-list" style="width: 80%; max-height: 60vh; overflow-y: auto; margin: 20px 0;"></div>
         <button onclick="document.getElementById('achievements-overlay').classList.remove('active'); startGauge();">閉じる</button>
+    </div>
+    <div id="repay-overlay" class="overlay-screen">
+        <h1>◆ 借金返済 ◆</h1>
+        <p>返済額: <span id="repay-amount-display" class="text-gold">¥0</span></p>
+        <input type="range" id="repay-slider" min="0" value="0" step="1000" style="width: 80%; margin: 20px 0;">
+        <div style="display: flex; gap: 20px;">
+            <button id="btn-repay-confirm" style="background: #f1c40f; color: #000;">返済する</button>
+            <button id="btn-repay-close">戻る</button>
+        </div>
     </div>
 <script>
     let state = {
@@ -311,7 +344,11 @@ if ('serviceWorker' in navigator) {
     const elBottle = document.getElementById('bottle');
     const elSwipeArea = document.getElementById('swipe-area');
     const btnBorrow = document.getElementById('btn-borrow');
+    const btnRepay = document.getElementById('btn-repay');
     const btnNext = document.getElementById('btn-next');
+    const repayOverlay = document.getElementById('repay-overlay');
+    const repaySlider = document.getElementById('repay-slider');
+    const repayAmountDisplay = document.getElementById('repay-amount-display');
     const resultOverlay = document.getElementById('result-overlay');
     const shopOverlay = document.getElementById('shop-overlay');
     const overlayTitle = document.getElementById('overlay-title');
@@ -340,6 +377,8 @@ if ('serviceWorker' in navigator) {
         shopOverlay.classList.remove('active');
         applyEnvironment();
         updateUI();
+        btnBorrow.disabled = false;
+        btnRepay.disabled = false;
         startGauge();
     }
     function updateUI() {
@@ -407,6 +446,7 @@ if ('serviceWorker' in navigator) {
     function flipBottle() {
         state.isFlipping = true;
         btnBorrow.disabled = true;
+        btnRepay.disabled = true;
         elBottle.classList.remove('flip-anim');
         void elBottle.offsetWidth;
         elBottle.classList.add('flip-anim');
@@ -461,6 +501,7 @@ if ('serviceWorker' in navigator) {
             btnRestart.style.display = 'block';
             btnNext.disabled = true;
             btnBorrow.disabled = true;
+            btnRepay.disabled = true;
         } else {
             setTimeout(() => {
                 resultOverlay.classList.remove('active');
@@ -468,6 +509,7 @@ if ('serviceWorker' in navigator) {
                 } else {
                     state.isFlipping = false;
                     btnBorrow.disabled = false;
+                    btnRepay.disabled = false;
                     startGauge();
                 }
             }, 1500);
@@ -495,6 +537,7 @@ if ('serviceWorker' in navigator) {
         checkAchievements();
         btnNext.disabled = true;
         btnBorrow.disabled = false;
+        btnRepay.disabled = false;
         state.isFlipping = false;
         applyEnvironment();
         updateUI();
@@ -505,6 +548,36 @@ if ('serviceWorker' in navigator) {
         state.debt += 10000;
         updateUI();
         checkAchievements();
+    });
+    function openRepayOverlay() {
+        if (state.debt <= 0) {
+            alert('借金はありません。');
+            return;
+        }
+        state.isFlipping = true;
+        repaySlider.max = Math.min(state.money, state.debt);
+        repaySlider.value = 0;
+        repayAmountDisplay.innerText = `¥0`;
+        repayOverlay.classList.add('active');
+    }
+    btnRepay.addEventListener('click', openRepayOverlay);
+    repaySlider.addEventListener('input', () => {
+        repayAmountDisplay.innerText = `¥${parseInt(repaySlider.value).toLocaleString()}`;
+    });
+    document.getElementById('btn-repay-confirm').addEventListener('click', () => {
+        const amount = parseInt(repaySlider.value);
+        state.money -= amount;
+        state.debt -= amount;
+        updateUI();
+        checkAchievements();
+        repayOverlay.classList.remove('active');
+        state.isFlipping = false;
+        startGauge();
+    });
+    document.getElementById('btn-repay-close').addEventListener('click', () => {
+        repayOverlay.classList.remove('active');
+        state.isFlipping = false;
+        startGauge();
     });
     btnNext.addEventListener('click', () => {
         openShop(); 
