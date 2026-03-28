@@ -285,13 +285,13 @@ if ('serviceWorker' in navigator) {
         </div>
     </div>
     <div id="save-overlay" class="overlay-screen">
-        <h1>◆ データ管理 ◆</h1>
-        <p style="font-size: 12px; color: #aaa; margin-bottom: 10px;">セーブデータをJSON形式で書き出し・読み込みできます。</p>
-        <textarea id="save-data-text" readonly style="width: 85%; height: 120px; margin: 10px 0; background: #222; color: #0f0; font-family: monospace; border: 2px solid #fff; padding: 10px; font-size: 10px;"></textarea>
+        <h1>◆ ふっかつのじゅもん ◆</h1>
+        <p style="font-size: 12px; color: #aaa; margin-bottom: 10px;">冒険の記録を呪文として書き出し・読み込みできます。</p>
+        <textarea id="save-data-text" readonly style="width: 85%; height: 120px; margin: 10px 0; background: #222; color: #0f0; font-family: monospace; border: 2px solid #fff; padding: 10px; font-size: 10px; word-break: break-all;"></textarea>
         <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
-            <button id="btn-save-copy" style="background: #3498db; color: #fff;">コピー</button>
-            <button id="btn-save-import" style="background: #e67e22; color: #fff;">インポート</button>
-            <button id="btn-save-reset" style="background: #e74c3c; color: #fff;">データ初期化</button>
+            <button id="btn-save-copy" style="background: #3498db; color: #fff;">呪文を書き写す</button>
+            <button id="btn-save-import" style="background: #e67e22; color: #fff;">呪文を唱える</button>
+            <button id="btn-save-reset" style="background: #e74c3c; color: #fff;">記憶を消去</button>
             <button id="btn-save-close">閉じる</button>
         </div>
     </div>
@@ -374,6 +374,24 @@ if ('serviceWorker' in navigator) {
     const buffCardsContainer = document.getElementById('buff-cards-container');
     const bottleList = ['🍼', '🥤', '🧋', '🍺', '🍷', '🥃', '🍸', '🍹', '🍶', '🍾', '🏺', '🧪', '🧴', '🧂', '🍯'];
     const SAVE_KEY = 'bottle_flip_master_save_v1';
+    function encodeSpell(data) {
+        const json = JSON.stringify(data);
+        let sum = 0;
+        for (let i = 0; i < json.length; i++) sum = (sum + json.charCodeAt(i)) % 10000;
+        const checksum = sum.toString().padStart(4, '0');
+        return btoa(unescape(encodeURIComponent(checksum + json)));
+    }
+    function decodeSpell(spell) {
+        try {
+            const raw = decodeURIComponent(escape(atob(spell)));
+            const checksum = raw.substring(0, 4);
+            const json = raw.substring(4);
+            let sum = 0;
+            for (let i = 0; i < json.length; i++) sum = (sum + json.charCodeAt(i)) % 10000;
+            if (sum.toString().padStart(4, '0') !== checksum) return null;
+            return JSON.parse(json);
+        } catch (e) { return null; }
+    }
     function saveGame() {
         const saveData = {
             money: state.money,
@@ -626,23 +644,23 @@ if ('serviceWorker' in navigator) {
             bestConsecutiveWins: state.bestConsecutiveWins,
             unlockedAchievements: state.unlockedAchievements
         };
-        saveDataText.value = JSON.stringify(saveData, null, 2);
+        saveDataText.value = encodeSpell(saveData);
         saveOverlay.classList.add('active');
     });
     document.getElementById('btn-save-copy').addEventListener('click', () => {
         saveDataText.select();
         document.execCommand('copy');
-        alert('クリップボードにコピーしました。');
+        alert('呪文を書き写しました。');
     });
     document.getElementById('btn-save-import').addEventListener('click', () => {
-        const json = prompt('セーブデータを貼り付けてください。');
-        if (json) {
-            try {
-                const data = JSON.parse(json);
+        const spell = prompt('呪文を入力してください。');
+        if (spell) {
+            const data = decodeSpell(spell);
+            if (data) {
                 localStorage.setItem(SAVE_KEY, JSON.stringify(data));
                 location.reload();
-            } catch (e) {
-                alert('無効な形式です。');
+            } else {
+                alert('呪文が間違っています。');
             }
         }
     });
