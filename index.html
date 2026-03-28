@@ -227,6 +227,7 @@ if ('serviceWorker' in navigator) {
             <div>Stage: <span id="stage">1</span></div>
             <div>没収額: <span id="penalty" class="text-red">¥5,000</span></div>
         </div>
+        <button id="btn-save-open" style="background:none; border:none; font-size:24px; cursor:pointer; vertical-align:middle; filter:drop-shadow(0 0 2px white); margin-left:10px;">💾</button>
     </header>
     <div id="env-display">【環境】静かな路地裏</div>
     <div id="game-area">
@@ -281,6 +282,17 @@ if ('serviceWorker' in navigator) {
         <div style="display: flex; gap: 20px;">
             <button id="btn-repay-confirm" style="background: #f1c40f; color: #000;">返済する</button>
             <button id="btn-repay-close">戻る</button>
+        </div>
+    </div>
+    <div id="save-overlay" class="overlay-screen">
+        <h1>◆ データ管理 ◆</h1>
+        <p style="font-size: 12px; color: #aaa; margin-bottom: 10px;">セーブデータをJSON形式で書き出し・読み込みできます。</p>
+        <textarea id="save-data-text" readonly style="width: 85%; height: 120px; margin: 10px 0; background: #222; color: #0f0; font-family: monospace; border: 2px solid #fff; padding: 10px; font-size: 10px;"></textarea>
+        <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
+            <button id="btn-save-copy" style="background: #3498db; color: #fff;">コピー</button>
+            <button id="btn-save-import" style="background: #e67e22; color: #fff;">インポート</button>
+            <button id="btn-save-reset" style="background: #e74c3c; color: #fff;">データ初期化</button>
+            <button id="btn-save-close">閉じる</button>
         </div>
     </div>
 <script>
@@ -351,6 +363,8 @@ if ('serviceWorker' in navigator) {
     const repayOverlay = document.getElementById('repay-overlay');
     const repaySlider = document.getElementById('repay-slider');
     const repayAmountDisplay = document.getElementById('repay-amount-display');
+    const saveOverlay = document.getElementById('save-overlay');
+    const saveDataText = document.getElementById('save-data-text');
     const resultOverlay = document.getElementById('result-overlay');
     const shopOverlay = document.getElementById('shop-overlay');
     const overlayTitle = document.getElementById('overlay-title');
@@ -359,8 +373,30 @@ if ('serviceWorker' in navigator) {
     const elFlash = document.getElementById('flash');
     const buffCardsContainer = document.getElementById('buff-cards-container');
     const bottleList = ['🍼', '🥤', '🧋', '🍺', '🍷', '🥃', '🍸', '🍹', '🍶', '🍾', '🏺', '🧪', '🧴', '🧂', '🍯'];
+    const SAVE_KEY = 'bottle_flip_master_save_v1';
+    function saveGame() {
+        const saveData = {
+            money: state.money,
+            debt: state.debt,
+            stage: state.stage,
+            unlockedBottles: state.unlockedBottles,
+            currentBottle: state.currentBottle,
+            consecutiveWins: state.consecutiveWins,
+            bestConsecutiveWins: state.bestConsecutiveWins,
+            unlockedAchievements: state.unlockedAchievements
+        };
+        localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+    }
+    function loadGame() {
+        const saved = localStorage.getItem(SAVE_KEY);
+        if (saved) {
+            try {
+                const data = JSON.parse(saved);
+                Object.assign(state, data);
+            } catch (e) { console.error("Failed to load save", e); }
+        }
+    }
     function initGame() {
-        const currentUnlocked = state.unlockedAchievements;
         state = {
             money: 10000, debt: 0, stage: 1, isFlipping: false, gaugePos: 0, gaugeDir: 1, animFrame: null, gameOver: false,
             buffs: { widthBonus: 0, speedMod: 1.0, rewardMod: 1.0, penaltyMod: 1.0 },
@@ -368,11 +404,10 @@ if ('serviceWorker' in navigator) {
             currentBottle: '🍾',
             consecutiveWins: 0,
             bestConsecutiveWins: 0,
-            unlockedAchievements: currentUnlocked,
+            unlockedAchievements: [],
             lastFlipDist: 100
         };
-        const saved = localStorage.getItem('achievements');
-        if (saved) state.unlockedAchievements = JSON.parse(saved);
+        loadGame();
         elBottle.classList.remove('shoot-anim');
         btnRestart.style.display = 'none';
         resultOverlay.classList.remove('active');
@@ -460,6 +495,7 @@ if ('serviceWorker' in navigator) {
             state.money += state.reward;
             state.consecutiveWins++;
             state.bestConsecutiveWins = Math.max(state.bestConsecutiveWins, state.consecutiveWins);
+            saveGame();
             const targetCenter = state.targetLeft + state.targetWidth / 2;
             state.lastFlipDist = Math.abs(cursorCenter - targetCenter);
             overlayTitle.innerText = "SUCCESS!";
@@ -470,6 +506,7 @@ if ('serviceWorker' in navigator) {
         } else {
             state.consecutiveWins = 0;
             state.money -= state.penalty;
+            saveGame();
             overlayTitle.innerText = "FAILED...";
             overlayTitle.style.color = "#ff4757";
             if (state.money <= 0) {
@@ -536,6 +573,7 @@ if ('serviceWorker' in navigator) {
     function closeShopAndNextStage() {
         shopOverlay.classList.remove('active');
         state.stage++;
+        saveGame();
         checkAchievements();
         btnNext.disabled = true;
         btnBorrow.disabled = false;
@@ -576,6 +614,49 @@ if ('serviceWorker' in navigator) {
         state.isFlipping = false;
         startGauge();
     });
+    document.getElementById('btn-save-open').addEventListener('click', () => {
+        state.isFlipping = true;
+        const saveData = {
+            money: state.money,
+            debt: state.debt,
+            stage: state.stage,
+            unlockedBottles: state.unlockedBottles,
+            currentBottle: state.currentBottle,
+            consecutiveWins: state.consecutiveWins,
+            bestConsecutiveWins: state.bestConsecutiveWins,
+            unlockedAchievements: state.unlockedAchievements
+        };
+        saveDataText.value = JSON.stringify(saveData, null, 2);
+        saveOverlay.classList.add('active');
+    });
+    document.getElementById('btn-save-copy').addEventListener('click', () => {
+        saveDataText.select();
+        document.execCommand('copy');
+        alert('クリップボードにコピーしました。');
+    });
+    document.getElementById('btn-save-import').addEventListener('click', () => {
+        const json = prompt('セーブデータを貼り付けてください。');
+        if (json) {
+            try {
+                const data = JSON.parse(json);
+                localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+                location.reload();
+            } catch (e) {
+                alert('無効な形式です。');
+            }
+        }
+    });
+    document.getElementById('btn-save-reset').addEventListener('click', () => {
+        if (confirm('全てのデータを消去して最初から始めますか？')) {
+            localStorage.removeItem(SAVE_KEY);
+            location.reload();
+        }
+    });
+    document.getElementById('btn-save-close').addEventListener('click', () => {
+        saveOverlay.classList.remove('active');
+        state.isFlipping = false;
+        startGauge();
+    });
     document.getElementById('btn-repay-close').addEventListener('click', () => {
         repayOverlay.classList.remove('active');
         state.isFlipping = false;
@@ -598,6 +679,7 @@ if ('serviceWorker' in navigator) {
             document.getElementById('gacha-result-bottle').innerText = newBottle;
             document.getElementById('gacha-overlay').classList.add('active');
             updateUI();
+            saveGame();
         } else {
             alert('資金不足だ。');
         }
@@ -647,8 +729,6 @@ if ('serviceWorker' in navigator) {
         document.getElementById('achievements-overlay').classList.add('active');
     });
     function checkAchievements() {
-        const saved = localStorage.getItem('achievements');
-        if (saved) state.unlockedAchievements = JSON.parse(saved);
         let newlyUnlocked = [];
         if (state.bestConsecutiveWins >= 3) newlyUnlocked.push('streak_3');
         if (state.bestConsecutiveWins >= 7) newlyUnlocked.push('streak_7');
@@ -664,7 +744,7 @@ if ('serviceWorker' in navigator) {
                 showAchievementToast(ach.name);
             }
         });
-        localStorage.setItem('achievements', JSON.stringify(state.unlockedAchievements));
+        saveGame();
     }
     function showAchievementToast(name) {
         const toast = document.createElement('div');
