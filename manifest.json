@@ -1,6 +1,6 @@
 {
-    "name": "1行1日記",
-    "short_name": "1行1日記",
+    "name": "賭けボトルフリップ",
+    "short_name": "賭けボトルフリップ",
     "start_url": "index.html",
     "display": "standalone",
     "icons": [
