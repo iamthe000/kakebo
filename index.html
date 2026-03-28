@@ -217,6 +217,7 @@ if ('serviceWorker' in navigator) {
         <button id="btn-borrow">借入 (¥1万)</button>
         <button id="btn-gacha">ガチャ (¥3,000)</button>
         <button id="btn-collection">図鑑</button>
+        <button id="btn-achievements">実績</button>
         <button id="btn-next" disabled>闇市へ進む</button>
     </div>
     <div id="result-overlay" class="overlay-screen">
@@ -242,6 +243,11 @@ if ('serviceWorker' in navigator) {
         <div id="collection-list" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 20px; overflow-y: auto; max-height: 50vh;"></div>
         <button onclick="document.getElementById('collection-overlay').classList.remove('active'); startGauge();">閉じる</button>
     </div>
+    <div id="achievements-overlay" class="overlay-screen">
+        <h1>◆ 実績 ◆</h1>
+        <div id="achievements-list" style="width: 80%; max-height: 60vh; overflow-y: auto; margin: 20px 0;"></div>
+        <button onclick="document.getElementById('achievements-overlay').classList.remove('active'); startGauge();">閉じる</button>
+    </div>
 <script>
     let state = {
         money: 10000,
@@ -259,18 +265,34 @@ if ('serviceWorker' in navigator) {
         basePenalty: 5000,
         baseReward: 8000,
         buffs: {
-            widthBonus: 0,      
-            speedMod: 1.0,      
-            rewardMod: 1.0,     
-            penaltyMod: 1.0     
-        }
+            widthBonus: 0,
+            speedMod: 1.0,
+            rewardMod: 1.0,
+            penaltyMod: 1.0
+        },
+        consecutiveWins: 0,
+        bestConsecutiveWins: 0,
+        unlockedAchievements: [],
+        lastFlipDist: 100
     };
+    const achievementsList = [
+        { id: 'streak_3', name: '三連勝の心得', desc: '3回連続で成功する' },
+        { id: 'streak_7', name: 'フリップの達人', desc: '7回連続で成功する' },
+        { id: 'streak_15', name: '伝説のフリッパー', desc: '15回連続で成功する' },
+        { id: 'perfect_center', name: '針の穴を通す', desc: '安全バーのど真ん中で成功する' },
+        { id: 'debt_king', name: '借金王', desc: '借金総額が100万円を突破する' },
+        { id: 'high_roller', name: '富豪', desc: '所持金が100万円を突破する' },
+        { id: 'stage_100', name: '世界の果て', desc: 'ステージ100に到達する' }
+    ];
     const environments = [
         { name: "静かな路地裏", bg: "#2c3e50", speed: 1.2, width: 35, penalty: 5000, reward: 8000 },
         { name: "地下の違法バー", bg: "#4a2311", speed: 1.8, width: 28, penalty: 12000, reward: 20000 },
         { name: "揺れるクルーザー", bg: "#004466", speed: 2.8, width: 22, penalty: 30000, reward: 50000 },
         { name: "マフィアの拷問部屋", bg: "#330000", speed: 4.0, width: 16, penalty: 80000, reward: 150000 },
-        { name: "狂気のVIPルーム", bg: "#1a0033", speed: 6.0, width: 10, penalty: 200000, reward: 500000 }
+        { name: "狂気のVIPルーム", bg: "#1a0033", speed: 6.0, width: 10, penalty: 200000, reward: 500000 },
+        { name: "電脳の吹き溜まり", bg: "#00ff41", speed: 8.0, width: 8, penalty: 500000, reward: 1200000 },
+        { name: "宇宙の断崖", bg: "#000022", speed: 10.0, width: 6, penalty: 1500000, reward: 4000000 },
+        { name: "神々の遊戯場", bg: "#ffffff", speed: 15.0, width: 4, penalty: 5000000, reward: 15000000 }
     ];
     const buffPool = [
         { id: 'width', name: "動体視力強化", desc: "安全地帯の幅が少し広がる", apply: () => state.buffs.widthBonus += 4 },
@@ -299,12 +321,19 @@ if ('serviceWorker' in navigator) {
     const buffCardsContainer = document.getElementById('buff-cards-container');
     const bottleList = ['🍼', '🥤', '🧋', '🍺', '🍷', '🥃', '🍸', '🍹', '🍶', '🍾', '🏺', '🧪', '🧴', '🧂', '🍯'];
     function initGame() {
+        const currentUnlocked = state.unlockedAchievements;
         state = {
             money: 10000, debt: 0, stage: 1, isFlipping: false, gaugePos: 0, gaugeDir: 1, animFrame: null, gameOver: false,
             buffs: { widthBonus: 0, speedMod: 1.0, rewardMod: 1.0, penaltyMod: 1.0 },
             unlockedBottles: ['🍾'],
-            currentBottle: '🍾'
+            currentBottle: '🍾',
+            consecutiveWins: 0,
+            bestConsecutiveWins: 0,
+            unlockedAchievements: currentUnlocked,
+            lastFlipDist: 100
         };
+        const saved = localStorage.getItem('achievements');
+        if (saved) state.unlockedAchievements = JSON.parse(saved);
         elBottle.classList.remove('shoot-anim');
         btnRestart.style.display = 'none';
         resultOverlay.classList.remove('active');
@@ -329,12 +358,15 @@ if ('serviceWorker' in navigator) {
         let env = { ...environments[envIndex] };
         if (state.stage > environments.length) {
             const diff = state.stage - environments.length;
-            env.speed += diff * 1.0;
-            env.width = Math.max(2, env.width - diff * 1.5);
-            env.penalty *= Math.pow(1.5, diff);
-            env.reward *= Math.pow(1.5, diff);
-            env.name = `深淵 (Level ${state.stage})`;
-            env.bg = "#000000";
+            env.speed += diff * 1.5;
+            env.width = Math.max(1, env.width - diff * 0.5);
+            env.penalty *= Math.pow(2.0, diff);
+            env.reward *= Math.pow(2.0, diff);
+            const prefixes = ["真・", "極・", "超・", "幻・", "終焉の", "無限の"];
+            const prefix = prefixes[Math.floor((state.stage * 0.1) % prefixes.length)];
+            env.name = `${prefix}${env.name} (Lv.${state.stage})`;
+            const hue = (state.stage * 137) % 360;
+            env.bg = `hsl(${hue}, 40%, 10%)`;
         }
         return env;
     }
@@ -384,12 +416,17 @@ if ('serviceWorker' in navigator) {
         const cursorCenter = state.gaugePos;
         if (cursorCenter >= state.targetLeft && cursorCenter <= state.targetLeft + state.targetWidth) {
             state.money += state.reward;
+            state.consecutiveWins++;
+            state.bestConsecutiveWins = Math.max(state.bestConsecutiveWins, state.consecutiveWins);
+            const targetCenter = state.targetLeft + state.targetWidth / 2;
+            state.lastFlipDist = Math.abs(cursorCenter - targetCenter);
             overlayTitle.innerText = "SUCCESS!";
             overlayTitle.style.color = "#2ed573";
             overlayMsg.innerText = `見事なフリップ！\n賞金 ¥${state.reward.toLocaleString()} を獲得した。`;
             showResult(false);
             btnNext.disabled = false;
         } else {
+            state.consecutiveWins = 0;
             state.money -= state.penalty;
             overlayTitle.innerText = "FAILED...";
             overlayTitle.style.color = "#ff4757";
@@ -404,6 +441,7 @@ if ('serviceWorker' in navigator) {
             }
         }
         updateUI();
+        checkAchievements();
     }
     function triggerDeath() {
         state.gameOver = true;
@@ -454,6 +492,7 @@ if ('serviceWorker' in navigator) {
     function closeShopAndNextStage() {
         shopOverlay.classList.remove('active');
         state.stage++;
+        checkAchievements();
         btnNext.disabled = true;
         btnBorrow.disabled = false;
         state.isFlipping = false;
@@ -465,6 +504,7 @@ if ('serviceWorker' in navigator) {
         state.money += 10000;
         state.debt += 10000;
         updateUI();
+        checkAchievements();
     });
     btnNext.addEventListener('click', () => {
         openShop(); 
@@ -511,6 +551,66 @@ if ('serviceWorker' in navigator) {
         });
         document.getElementById('collection-overlay').classList.add('active');
     });
+    document.getElementById('btn-achievements').addEventListener('click', () => {
+        const list = document.getElementById('achievements-list');
+        list.innerHTML = '';
+        achievementsList.forEach(ach => {
+            const isUnlocked = state.unlockedAchievements.includes(ach.id);
+            const item = document.createElement('div');
+            item.style.border = '2px solid ' + (isUnlocked ? '#f1c40f' : '#555');
+            item.style.padding = '10px';
+            item.style.marginBottom = '10px';
+            item.style.background = isUnlocked ? 'rgba(241, 196, 15, 0.2)' : 'rgba(0,0,0,0.5)';
+            item.innerHTML = `
+                <div style="font-size: 18px; color: ${isUnlocked ? '#f1c40f' : '#888'};">
+                    ${isUnlocked ? '🏆 ' : '🔒 '}${ach.name}
+                </div>
+                <div style="font-size: 12px; color: #ccc;">${ach.desc}</div>
+            `;
+            list.appendChild(item);
+        });
+        document.getElementById('achievements-overlay').classList.add('active');
+    });
+    function checkAchievements() {
+        const saved = localStorage.getItem('achievements');
+        if (saved) state.unlockedAchievements = JSON.parse(saved);
+        let newlyUnlocked = [];
+        if (state.bestConsecutiveWins >= 3) newlyUnlocked.push('streak_3');
+        if (state.bestConsecutiveWins >= 7) newlyUnlocked.push('streak_7');
+        if (state.bestConsecutiveWins >= 15) newlyUnlocked.push('streak_15');
+        if (state.lastFlipDist <= 1) newlyUnlocked.push('perfect_center');
+        if (state.debt >= 1000000) newlyUnlocked.push('debt_king');
+        if (state.money >= 1000000) newlyUnlocked.push('high_roller');
+        if (state.stage >= 100) newlyUnlocked.push('stage_100');
+        newlyUnlocked.forEach(id => {
+            if (!state.unlockedAchievements.includes(id)) {
+                state.unlockedAchievements.push(id);
+                const ach = achievementsList.find(a => a.id === id);
+                showAchievementToast(ach.name);
+            }
+        });
+        localStorage.setItem('achievements', JSON.stringify(state.unlockedAchievements));
+    }
+    function showAchievementToast(name) {
+        const toast = document.createElement('div');
+        toast.style.position = 'fixed';
+        toast.style.bottom = '20px';
+        toast.style.left = '50%';
+        toast.style.transform = 'translateX(-50%)';
+        toast.style.background = 'rgba(241, 196, 15, 0.9)';
+        toast.style.color = '#000';
+        toast.style.padding = '10px 20px';
+        toast.style.border = '4px double #000';
+        toast.style.zIndex = '1000';
+        toast.style.fontFamily = "'DotGothic16', sans-serif";
+        toast.style.animation = 'fadeOut 3s forwards';
+        toast.innerHTML = `🏆 実績解除: ${name}`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+    const style = document.createElement('style');
+    style.innerHTML = '@keyframes fadeOut { 0% { opacity: 1; transform: translateX(-50%) translateY(0); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateX(-50%) translateY(-20px); } }';
+    document.head.appendChild(style);
     initGame();
 </script>
 </body>
