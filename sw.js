@@ -1,4 +1,4 @@
-var CACHE_NAME = 'pwasample';
+var CACHE_NAME = 'kakebo';
 var urlsToCache = [
     '/apps/pwa/',
     '/apps/pwa/index.html'
